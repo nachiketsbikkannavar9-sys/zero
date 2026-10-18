@@ -1,0 +1,287 @@
+# DataMind Semantic Catalog Configuration
+# Defines datasets, physical schema bindings, join paths, metrics, dimensions, and unavailable concepts.
+# To add a second dataset, define a new entry under `datasets:` with database, schema, tables, joins, metrics, and dimensions.
+
+datasets:
+  tpch:
+    name: "TPC-H SF1"
+    description: "Standard TPC-H decision support benchmark dataset in Snowflake Sample Data."
+    database: "SNOWFLAKE_SAMPLE_DATA"
+    schema: "TPCH_SF1"
+
+    date_dimension:
+      column: "O_ORDERDATE"
+      table: "ORDERS"
+      allowed_grains:
+        - "year"
+        - "quarter"
+        - "month"
+        - "day"
+
+    tables:
+      ORDERS:
+        description: "Orders placed by customers"
+        columns:
+          O_ORDERKEY: "Unique identifier for each order"
+          O_CUSTKEY: "Foreign key to CUSTOMER"
+          O_ORDERSTATUS: "Status code of the order (O, F, P)"
+          O_TOTALPRICE: "Total price of the order"
+          O_ORDERDATE: "Date the order was placed"
+          O_ORDERPRIORITY: "Priority of the order (1-URGENT, 2-HIGH, 3-MEDIUM, 4-NOT SPECIFIED, 5-LOW)"
+          O_CLERK: "Clerk identifier"
+          O_SHIPPRIORITY: "Shipping priority code"
+          O_COMMENT: "Order comment"
+      LINEITEM:
+        description: "Line items associated with each order"
+        columns:
+          L_ORDERKEY: "Foreign key to ORDERS"
+          L_PARTKEY: "Foreign key to PART"
+          L_SUPPKEY: "Foreign key to SUPPLIER"
+          L_LINENUMBER: "Line number within order"
+          L_QUANTITY: "Quantity ordered"
+          L_EXTENDEDPRICE: "Extended price for this line item"
+          L_DISCOUNT: "Discount applied to this line item (0.0 to 1.0)"
+          L_TAX: "Tax percentage"
+          L_RETURNFLAG: "Return flag (R, A, N)"
+          L_LINESTATUS: "Line status (O, F)"
+          L_SHIPDATE: "Ship date"
+          L_COMMITDATE: "Commit date"
+          L_RECEIPTDATE: "Receipt date"
+          L_SHIPINSTRUCT: "Shipping instructions"
+          L_SHIPMODE: "Shipping mode (AIR, SHIP, TRUCK, etc.)"
+          L_COMMENT: "Line item comment"
+      CUSTOMER:
+        description: "Customers who place orders"
+        columns:
+          C_CUSTKEY: "Unique customer identifier"
+          C_NAME: "Customer name"
+          C_ADDRESS: "Customer address"
+          C_NATIONKEY: "Foreign key to NATION"
+          C_PHONE: "Customer phone number"
+          C_ACCTBAL: "Account balance"
+          C_MKTSEGMENT: "Market segment (AUTOMOBILE, BUILDING, MACHINERY, HOUSEHOLD, FURNITURE)"
+          C_COMMENT: "Customer comment"
+      PART:
+        description: "Parts sold"
+        columns:
+          P_PARTKEY: "Unique part identifier"
+          P_NAME: "Part name"
+          P_MFGR: "Part manufacturer"
+          P_BRAND: "Part brand"
+          P_TYPE: "Part type"
+          P_SIZE: "Part size"
+          P_CONTAINER: "Part container type"
+          P_RETAILPRICE: "Retail price of the part"
+          P_COMMENT: "Part comment"
+      SUPPLIER:
+        description: "Suppliers of parts"
+        columns:
+          S_SUPPKEY: "Unique supplier identifier"
+          S_NAME: "Supplier name"
+          S_ADDRESS: "Supplier address"
+          S_NATIONKEY: "Foreign key to NATION"
+          S_PHONE: "Supplier phone"
+          S_ACCTBAL: "Supplier account balance"
+          S_COMMENT: "Supplier comment"
+      PARTSUPP:
+        description: "Part supplier relationship"
+        columns:
+          PS_PARTKEY: "Foreign key to PART"
+          PS_SUPPKEY: "Foreign key to SUPPLIER"
+          PS_AVAILQTY: "Available quantity"
+          PS_SUPPLYCOST: "Supply cost"
+          PS_COMMENT: "Comment"
+      NATION:
+        description: "Nations where customers and suppliers reside"
+        columns:
+          N_NATIONKEY: "Unique nation identifier"
+          N_NAME: "Nation name"
+          N_REGIONKEY: "Foreign key to REGION"
+          N_COMMENT: "Nation comment"
+      REGION:
+        description: "Geographic regions containing nations"
+        columns:
+          R_REGIONKEY: "Unique region identifier"
+          R_NAME: "Region name (AFRICA, AMERICA, ASIA, EUROPE, MIDDLE EAST)"
+          R_COMMENT: "Region comment"
+
+    join_paths:
+      - from_table: "LINEITEM"
+        to_table: "ORDERS"
+        'on': "LINEITEM.L_ORDERKEY = ORDERS.O_ORDERKEY"
+      - from_table: "ORDERS"
+        to_table: "CUSTOMER"
+        'on': "ORDERS.O_CUSTKEY = CUSTOMER.C_CUSTKEY"
+      - from_table: "CUSTOMER"
+        to_table: "NATION"
+        'on': "CUSTOMER.C_NATIONKEY = NATION.N_NATIONKEY"
+      - from_table: "NATION"
+        to_table: "REGION"
+        'on': "NATION.N_REGIONKEY = REGION.R_REGIONKEY"
+      - from_table: "LINEITEM"
+        to_table: "PART"
+        'on': "LINEITEM.L_PARTKEY = PART.P_PARTKEY"
+      - from_table: "LINEITEM"
+        to_table: "SUPPLIER"
+        'on': "LINEITEM.L_SUPPKEY = SUPPLIER.S_SUPPKEY"
+      - from_table: "SUPPLIER"
+        to_table: "NATION"
+        'on': "SUPPLIER.S_NATIONKEY = NATION.N_NATIONKEY"
+
+    metrics:
+      revenue:
+        description: "Net revenue defined as SUM(L_EXTENDEDPRICE * (1 - L_DISCOUNT)). This calculates real realized revenue after item discounts."
+        expression: "SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT))"
+        required_tables:
+          - "LINEITEM"
+      order_count:
+        description: "Total count of unique orders: COUNT(DISTINCT ORDERS.O_ORDERKEY)"
+        expression: "COUNT(DISTINCT ORDERS.O_ORDERKEY)"
+        required_tables:
+          - "ORDERS"
+      total_quantity:
+        description: "Total lineitem quantity ordered: SUM(LINEITEM.L_QUANTITY)"
+        expression: "SUM(LINEITEM.L_QUANTITY)"
+        required_tables:
+          - "LINEITEM"
+      avg_order_value:
+        description: "Average order total value: AVG(ORDERS.O_TOTALPRICE)"
+        expression: "AVG(ORDERS.O_TOTALPRICE)"
+        required_tables:
+          - "ORDERS"
+      customer_count:
+        description: "Total unique customers: COUNT(DISTINCT CUSTOMER.C_CUSTKEY)"
+        expression: "COUNT(DISTINCT CUSTOMER.C_CUSTKEY)"
+        required_tables:
+          - "CUSTOMER"
+      total_price:
+        description: "Gross order total price: SUM(ORDERS.O_TOTALPRICE)"
+        expression: "SUM(ORDERS.O_TOTALPRICE)"
+        required_tables:
+          - "ORDERS"
+
+    dimensions:
+      customer_name:
+        description: "Full customer name (e.g. Customer#000000001)"
+        expression: "CUSTOMER.C_NAME"
+        table: "CUSTOMER"
+      nation:
+        description: "Nation name (e.g. UNITED STATES, JAPAN, GERMANY)"
+        expression: "NATION.N_NAME"
+        table: "NATION"
+      region:
+        description: "Geographic macro-region"
+        expression: "REGION.R_NAME"
+        table: "REGION"
+        allowed_values:
+          - "AFRICA"
+          - "AMERICA"
+          - "ASIA"
+          - "EUROPE"
+          - "MIDDLE EAST"
+      market_segment:
+        description: "Customer market segment"
+        expression: "CUSTOMER.C_MKTSEGMENT"
+        table: "CUSTOMER"
+        allowed_values:
+          - "AUTOMOBILE"
+          - "BUILDING"
+          - "FURNITURE"
+          - "HOUSEHOLD"
+          - "MACHINERY"
+      part_name:
+        description: "Part description name"
+        expression: "PART.P_NAME"
+        table: "PART"
+      part_brand:
+        description: "Brand code of part"
+        expression: "PART.P_BRAND"
+        table: "PART"
+      part_type:
+        description: "Part material and size specification"
+        expression: "PART.P_TYPE"
+        table: "PART"
+      supplier_name:
+        description: "Supplier company name"
+        expression: "SUPPLIER.S_NAME"
+        table: "SUPPLIER"
+      order_priority:
+        description: "Priority assigned to the order"
+        expression: "ORDERS.O_ORDERPRIORITY"
+        table: "ORDERS"
+        allowed_values:
+          - "1-URGENT"
+          - "2-HIGH"
+          - "3-MEDIUM"
+          - "4-NOT SPECIFIED"
+          - "5-LOW"
+      order_status:
+        description: "Order status code"
+        expression: "ORDERS.O_ORDERSTATUS"
+        table: "ORDERS"
+        allowed_values:
+          - "O"
+          - "F"
+          - "P"
+      order_date:
+        description: "Order placement date"
+        expression: "ORDERS.O_ORDERDATE"
+        table: "ORDERS"
+
+    unavailable_concepts:
+      profit: "Net profit is not tracked in TPC-H because supplier manufacturing overhead, operational expenditures, and shipping costs are not part of the standard benchmark schema."
+      cost: "Total product and overhead cost is not available in the TPC-H schema."
+      margin: "Profit margin cannot be calculated without cost of goods sold."
+      churn: "Customer churn rates and retention flags are not present in TPC-H."
+      returns: "Return dollar amounts and return workflows are not tracked; only a binary return status flag exists."
+      discount_rate: "Discount rate as an aggregate company metric is not stored; discount exists only as an attribute of individual line items."
+
+  # Example secondary dataset (Our World in Data energy schema) demonstrating pure config extensibility
+  owid_energy:
+    name: "Our World in Data - Energy"
+    description: "Global energy production, consumption, and emissions metrics."
+    database: "ENERGY_DATA"
+    schema: "PUBLIC"
+    date_dimension:
+      column: "YEAR"
+      table: "ANNUAL_ENERGY"
+      allowed_grains:
+        - "year"
+    tables:
+      ANNUAL_ENERGY:
+        description: "Country level annual energy statistics"
+        columns:
+          COUNTRY: "Country name"
+          YEAR: "Observation year"
+          PRIMARY_ENERGY_CONSUMPTION: "Primary energy consumption in terawatt-hours"
+          RENEWABLES_CONSUMPTION: "Renewable energy consumption in terawatt-hours"
+          GREENHOUSE_GAS_EMISSIONS: "Total GHG emissions in metric tons"
+    join_paths: []
+    metrics:
+      primary_energy:
+        description: "Total primary energy consumption: SUM(PRIMARY_ENERGY_CONSUMPTION)"
+        expression: "SUM(ANNUAL_ENERGY.PRIMARY_ENERGY_CONSUMPTION)"
+        required_tables:
+          - "ANNUAL_ENERGY"
+      renewable_energy:
+        description: "Total renewable energy consumption: SUM(RENEWABLES_CONSUMPTION)"
+        expression: "SUM(ANNUAL_ENERGY.RENEWABLES_CONSUMPTION)"
+        required_tables:
+          - "ANNUAL_ENERGY"
+      ghg_emissions:
+        description: "Total greenhouse gas emissions: SUM(GREENHOUSE_GAS_EMISSIONS)"
+        expression: "SUM(ANNUAL_ENERGY.GREENHOUSE_GAS_EMISSIONS)"
+        required_tables:
+          - "ANNUAL_ENERGY"
+    dimensions:
+      country:
+        description: "Country name"
+        expression: "ANNUAL_ENERGY.COUNTRY"
+        table: "ANNUAL_ENERGY"
+      year:
+        description: "Observation year"
+        expression: "ANNUAL_ENERGY.YEAR"
+        table: "ANNUAL_ENERGY"
+    unavailable_concepts:
+      hourly_demand: "Hourly power grid demand is not tracked in annual OWID energy summaries."
+      pricing: "Electricity retail prices are not included in this dataset."

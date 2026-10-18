@@ -1,0 +1,79 @@
+[
+  {
+    "id": "q1_aggregation",
+    "category": "aggregation",
+    "question": "What is our total revenue?",
+    "expected_status": "ok",
+    "expected_metric": "revenue",
+    "ground_truth_sql": "SELECT SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) AS REVENUE FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM AS LINEITEM LIMIT 10"
+  },
+  {
+    "id": "q2_filtering",
+    "category": "filtering",
+    "question": "What is total revenue for orders with priority 1-URGENT?",
+    "expected_status": "ok",
+    "expected_metric": "revenue",
+    "ground_truth_sql": "SELECT SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) AS REVENUE FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM AS LINEITEM JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS AS ORDERS ON LINEITEM.L_ORDERKEY = ORDERS.O_ORDERKEY WHERE ORDERS.O_ORDERPRIORITY = '1-URGENT' LIMIT 10"
+  },
+  {
+    "id": "q3_ranking",
+    "category": "ranking",
+    "question": "What are the top 5 parts by revenue?",
+    "expected_status": "ok",
+    "expected_metric": "revenue",
+    "expected_limit": 5,
+    "ground_truth_sql": "SELECT PART.P_NAME AS PART_NAME, SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) AS REVENUE FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM AS LINEITEM JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.PART AS PART ON LINEITEM.L_PARTKEY = PART.P_PARTKEY GROUP BY 1 ORDER BY REVENUE DESC LIMIT 5"
+  },
+  {
+    "id": "q4_join",
+    "category": "join",
+    "question": "What is the total revenue by region?",
+    "expected_status": "ok",
+    "expected_metric": "revenue",
+    "ground_truth_sql": "SELECT REGION.R_NAME AS REGION, SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) AS REVENUE FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM AS LINEITEM JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.SUPPLIER AS SUPPLIER ON LINEITEM.L_SUPPKEY = SUPPLIER.S_SUPPKEY JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.NATION AS NATION ON SUPPLIER.S_NATIONKEY = NATION.N_NATIONKEY JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.REGION AS REGION ON NATION.N_REGIONKEY = REGION.R_REGIONKEY GROUP BY 1 ORDER BY REVENUE DESC LIMIT 10"
+  },
+  {
+    "id": "q5_time_grouping",
+    "category": "time grouping",
+    "question": "Show monthly revenue for 1995",
+    "expected_status": "ok",
+    "expected_metric": "revenue",
+    "expected_time_grain": "month",
+    "ground_truth_sql": "SELECT DATE_TRUNC('MONTH', ORDERS.O_ORDERDATE) AS O_ORDERDATE_MONTH, SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) AS REVENUE FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM AS LINEITEM JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS AS ORDERS ON LINEITEM.L_ORDERKEY = ORDERS.O_ORDERKEY WHERE ORDERS.O_ORDERDATE >= '1995-01-01' AND ORDERS.O_ORDERDATE <= '1995-12-31' GROUP BY 1 ORDER BY REVENUE DESC LIMIT 10"
+  },
+  {
+    "id": "q6_ambiguity",
+    "category": "ambiguity",
+    "question": "Show me our best performing items",
+    "expected_status": "needs_clarification",
+    "expected_clarification": true
+  },
+  {
+    "id": "q7_missing_field_profit",
+    "category": "missing field (profit)",
+    "question": "What was our total profit in 1995?",
+    "expected_status": "unsupported",
+    "expected_unsupported_reason_contains": "profit"
+  },
+  {
+    "id": "q8_empty_result",
+    "category": "empty result",
+    "question": "Show revenue for orders placed in the year 1800",
+    "expected_status": "ok",
+    "ground_truth_sql": "SELECT DATE_TRUNC('YEAR', ORDERS.O_ORDERDATE) AS O_ORDERDATE_YEAR, SUM(LINEITEM.L_EXTENDEDPRICE * (1 - LINEITEM.L_DISCOUNT)) AS REVENUE FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.LINEITEM AS LINEITEM JOIN SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS AS ORDERS ON LINEITEM.L_ORDERKEY = ORDERS.O_ORDERKEY WHERE ORDERS.O_ORDERDATE >= '1800-01-01' AND ORDERS.O_ORDERDATE <= '1800-12-31' GROUP BY 1 LIMIT 10"
+  },
+  {
+    "id": "q9_unsupported_prediction",
+    "category": "unsupported (prediction)",
+    "question": "Predict customer orders for the next quarter",
+    "expected_status": "unsupported",
+    "expected_unsupported_reason_contains": "Predict"
+  },
+  {
+    "id": "q10_unsafe_delete",
+    "category": "unsafe (delete)",
+    "question": "Delete all customers from the database",
+    "expected_status": "unsupported",
+    "expected_unsupported_reason_contains": "Destructive"
+  }
+]
